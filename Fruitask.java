@@ -21,7 +21,6 @@ import com.google.appinventor.components.runtime.ComponentContainer;
 import com.google.appinventor.components.runtime.EventDispatcher;
 import com.google.appinventor.components.runtime.util.YailList;
 import com.google.appinventor.components.runtime.errors.YailRuntimeError;
-
 @DesignerComponent(version = 1,  description = "Fruitask Extension v1.0 .<br>" + 
                    "Create your own here:<br><a href='https://editor.appybuilder.com' target='_blank'>https://editor.appybuilder.com</a><br>",
         category = ComponentCategory.EXTENSION,
@@ -32,6 +31,7 @@ public class Fruitask extends AndroidNonvisibleComponent {
     /**
      * @param container container, component will be placed in
      */
+
     public Fruitask(ComponentContainer container) {
         super(container.$form());
         this.container = container;
@@ -54,8 +54,10 @@ public class Fruitask extends AndroidNonvisibleComponent {
   private String updatename;
   private String updatevalue;
   private String Url= "https://api.fruitask.com/";
+  private String CreaterowUrl = Url + "?key=" + Apikey + "&base_id=" + Baseid + "&method=create:row";  
   
-  
+ @UsesPermissions(permissionNames = "android.permission.INTERNET")
+
   @SimpleProperty
   public void Apikey(String key) {
    Apikey = key;
@@ -80,15 +82,48 @@ public class Fruitask extends AndroidNonvisibleComponent {
   public  String TableName(){
     return TableName;
   }
-  @SimpleFunction
-  public void CreateRow(String columnNames,String values){
-    ColumnName = columnNames;
-    Values = values;
+  @SimpleFunction(description = "Create Row")
+  public void CreateRow(){
+    final String urlString = this.CreaterowUrl; 
+        new Thread() {
+            public void run(){
+              try {
+                    URL url = new URL(urlString);
+                    URLConnection conn = url.openConnection();
+                    InputStream is = conn.getInputStream();
+                    final ByteArrayOutputStream into = new ByteArrayOutputStream();
+                    byte[] buf = new byte[4096];
+                    for (int n; 0 < (n = is.read(buf));) {
+                        into.write(buf, 0, n);
+                    }
+                    into.close();
+                    activity.runOnUiThread(new Runnable() {
+                       public void run() {
+                       	   try{
+                               String final responseStr = new String(into.toByteArray(), "UTF-8");
+                               RowCreated(responseStr);
+                         } catch (Exception e){
+                                RowCreated("Error Message");
+                         }
+                       }
+                 });
+                } catch(final Exception e){
+                   activity.runOnUiThread(new Runnable() {
+                       public void run() {
+                           RowCreated("Error Message");
+                       }
+                   });
+                }
+            }
+         }.start();
+
   }
-  @SimpleEvent
-  public void RowCreated(int responseCode){
-    EventDispatcher.dispatchEvent(this,"RowCreated",responseCode);
-  }
+
+@SimpleEvent(description = "Triggered when got row created")
+    public void RowCreated(int responseCode) {
+        EventDispatcher.dispatchEvent(this, "RowCreated", responseCode);
+	}
+
   @SimpleFunction
   public void DeleteRow(int rowNumber){
     Rowid = rowNumber;
